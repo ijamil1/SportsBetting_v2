@@ -14,9 +14,8 @@ def load_logged_in_user_and_create_db_conn():
     if user_id is None:
         g.user = None
     else:
-        g.user = session.get('cursor').execute(
-            'SELECT * FROM users WHERE id = {}'.format(int(user_id))
-        ).fetchone()
+        g.user = 1
+        
     
 
 def get_db():
@@ -29,10 +28,9 @@ def get_db():
     helper_funcs.createSpreadBetsTable(g.cursor)
     helper_funcs.createMLBetsTable(g.cursor)
     helper_funcs.create_users_table(g.cursor)
-    return g.cursor
 
 def close_db(e=None):
-    db = g.pop('db', None)
+    db = g.pop('connection', None)
 
     if db is not None:
         db.close()
@@ -50,7 +48,8 @@ def register():
         elif not password:
             error = 'Password is required.'
         if error is None:
-            cursor = get_db()
+            get_db()
+            cursor = g.cursor
             cursor.execute("INSERT INTO users (username, password) VALUES (\'{}\', \'{}\')".format(username,password))
             return redirect(url_for("auth.login"))
         else:
@@ -65,7 +64,8 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        cursor = get_db()
+        get_db()
+        cursor = g.cursor
         error = None
         cursor.execute('SELECT * FROM users WHERE username = \'{}\''.format(username))
         user = cursor.fetchone()
@@ -76,7 +76,7 @@ def login():
 
         if error is None:
             session['user_id'] = user[0]
-            return redirect(url_for('index'))
+            return redirect(url_for('bets.get_ml'))
 
         flash(error)
 
@@ -97,4 +97,4 @@ def login_required(view):
 @bp.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('index'))
+    return redirect(url_for('.login'))

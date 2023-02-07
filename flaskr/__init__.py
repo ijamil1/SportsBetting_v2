@@ -3,7 +3,7 @@ import requests
 import pymysql
 import datetime 
 from flask import Flask, session
-from . import auth
+from . import auth, bets
 
 
 def create_app(test_config=None):
@@ -17,10 +17,10 @@ def create_app(test_config=None):
     except OSError:
         pass
 
-    from . import auth, blog 
+    from . import auth 
     app.register_blueprint(auth.bp)
-    #app.register_blueprint(blog.bp)
-    #app.add_url_rule('/', endpoint='index')
+    app.register_blueprint(bets.bp)
+    app.add_url_rule('/', endpoint='index')
 
     return app
 
