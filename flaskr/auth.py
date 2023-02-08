@@ -59,7 +59,7 @@ def register():
     return render_template('auth/register.html')
 
 
-@bp.route('/login', methods=('GET', 'POST'))
+@bp.route('/', methods=('GET', 'POST'))
 def login():
     if request.method == 'POST':
         username = request.form['username']
@@ -76,7 +76,7 @@ def login():
 
         if error is None:
             session['user_id'] = user[0]
-            return redirect(url_for('bets.get_ml'))
+            return redirect(url_for('bets.index'))
 
         flash(error)
 

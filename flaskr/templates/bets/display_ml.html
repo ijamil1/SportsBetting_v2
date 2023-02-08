@@ -2,9 +2,6 @@
 
 {% block header %}
   <h1>{% block title %}Moneylines{% endblock %}</h1>
-  {% if g.user %}
-    <a class="action" href="{{ url_for('auth.logout') }}">Logout</a>
-  {% endif %}
 {% endblock %}
 
 {% block content %}
