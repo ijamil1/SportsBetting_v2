@@ -4,7 +4,7 @@ from flask import (
 from werkzeug.exceptions import abort
 
 from flaskr.auth import login_required
-from flaskr.helper_funcs import get_db, get_inseason_sports, uploadMLodds, uploadSpreads
+from flaskr.helper_funcs import get_db, get_inseason_sports, uploadMLodds, uploadSpreads, deleteML, deleteSpreads,uploadScores
 import datetime
 
 bp = Blueprint('bets', __name__)
@@ -14,6 +14,8 @@ bp = Blueprint('bets', __name__)
 @login_required
 def index():
     if request.method == 'GET':
+        get_db()
+        uploadScores()
         return render_template('home.html')
     elif request.method == 'POST':
         if request.form.get('button') == 'Spreads':
@@ -53,7 +55,6 @@ def get_spreads(sport=None):
             else:
                 uploadSpreads(sportkey,current_app.config['API'],current_app.config['APIKEY'])
                 return redirect(url_for('.get_spreads',sport=sportkey))
-
         return render_template('bets/submit_sport.html', data=get_inseason_sports())
 
 @bp.route('/get_moneylines', methods=('GET', 'POST'))

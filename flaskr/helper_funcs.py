@@ -22,10 +22,10 @@ def create_balance_table(cursor):
     cursor.execute('CREATE TABLE IF NOT EXISTS balance (book VARCHAR(50), amount FLOAT(7,2))')
 
 def createSpreadBetsTable(cursor):
-    cursor.execute('CREATE TABLE IF NOT EXISTS spread_bets (id VARCHAR(100),team_bet_on VARCHAR(100), book_bet_at VARCHAR(100), amount_bet FLOAT(7,2), spread_offered FLOAT(7,2), line_offered FLOAT(7,2), CONSTRAINT id_book_team PRIMARY KEY (id,team_bet_on,book_bet_at))')
+    cursor.execute('CREATE TABLE IF NOT EXISTS spread_bets (id VARCHAR(100), sportkey VARCHAR(100),team_bet_on VARCHAR(100), book_bet_at VARCHAR(100), amount_bet FLOAT(7,2), spread_offered FLOAT(7,2), line_offered FLOAT(7,2), CONSTRAINT id_book_team PRIMARY KEY (id,team_bet_on,book_bet_at))')
 
 def createMLBetsTable(cursor):
-    cursor.execute('CREATE TABLE IF NOT EXISTS ml_bets (id VARCHAR(100),team_bet_on VARCHAR(100), book_bet_at VARCHAR(100), amount_bet FLOAT(7,2), line_offered FLOAT(7,2), CONSTRAINT id_book_team PRIMARY KEY (id,team_bet_on,book_bet_at))')
+    cursor.execute('CREATE TABLE IF NOT EXISTS ml_bets (id VARCHAR(100), sportkey VARCHAR(100),team_bet_on VARCHAR(100), book_bet_at VARCHAR(100), amount_bet FLOAT(7,2), line_offered FLOAT(7,2), CONSTRAINT id_book_team PRIMARY KEY (id,team_bet_on,book_bet_at))')
 
 def create_users_table(cursor):
     cursor.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER AUTO_INCREMENT, username VARCHAR(100), password VARCHAR(100), PRIMARY KEY (id))')
@@ -156,3 +156,140 @@ def check_for_ml_dups(game_id, ht_price, at_price, book):
                 if abs(float(at_price)-existing_at_price)/existing_at_price < .01:
                     return True
             return False
+    
+
+def deleteSpreads():
+    utc_now = datetime.datetime.now(datetime.timezone.utc)
+    utc_now_str = utc_now.strftime('%Y-%m-%d %H:%M:%S')
+    query = 'DELETE from spreads where Start_Time < \'{}\''.format(utc_now_str)
+    g.cursor.execute(query)
+
+def deleteML():
+    utc_now = datetime.datetime.now(datetime.timezone.utc)
+    utc_now_str = utc_now.strftime('%Y-%m-%d %H:%M:%S')
+    query = 'DELETE from moneyline where Start_Time < \'{}\''.format(utc_now_str)
+    g.cursor.execute(query)
+
+
+def getIdsScoresTbl():
+    g.cursor.execute('select id from scores')
+    rows = g.cursor.fetchall()
+    ls = []
+    for row in rows:
+        ls.append(row[0])
+    return ls
+    
+
+def uploadScores():
+    #gets the ids and sportkeys of games I've bet on; loops thru sportkeys and retrieves scores for each sport; for each sport, loops thru completed games 
+    #, checks that we bet on this game and that the game is not already in the score table, and then queries the bets we made on the game and updates  
+    # the balances accordingly; it also uploads the score to a score table;
+    # this function runs each time that the user logs in
+
+    spread_ids = []
+    ml_ids = []
+    bet_on_ids = []
+    bet_on_sportkeys = []
+    g.cursor.execute('SELECT id, sportkey from ml_bets')
+    rows = g.cursor.fetchall()
+    for row in rows:
+        if row[0] not in ml_ids:
+            ml_ids.append(row[0])
+        if row[1] not in bet_on_sportkeys:
+            bet_on_sportkeys.append(row[1])
+    g.cursor.execute('SELECT id, sportkey from spread_bets')
+    rows = g.cursor.fetchall()
+    for row in rows:
+        if row[0] not in spread_ids:
+            spread_ids.append(row[0])
+        if row[1] not in bet_on_sportkeys:
+            bet_on_sportkeys.append(row[1])
+
+    score_ids = getIdsScoresTbl()
+    bet_on_ids = set(ml_ids).union(spread_ids)
+
+    for key in bet_on_sportkeys:
+        json = requests.get(current_app.config['API']+key+'/scores/',params={'apiKey':current_app.config['APIKEY'],'daysFrom':3}).json()
+        ht = ''
+        at = ''
+        ht_score = -1
+        at_score = -1
+        for game in json:
+            if game['completed'] and (game['id'] in bet_on_ids) and game['id'] not in score_ids:
+                scores = game['scores']
+                for score in scores:
+                    cur_team = score['name']
+                    cur_score = score['score']
+                    if cur_team == game['home_team']:
+                        ht = cur_team
+                        ht_score = float(cur_score)
+                    elif cur_team == game['away_team']:
+                        at = cur_team
+                        at_score = float(cur_score)
+                if game['id'] in spread_ids:
+                    g.cursor.execute('select * from spread_bets where id = \'{}\''.format(game['id']))
+                    rows = g.cursor.fetchall()
+                    processSpreadBetResults(rows, ht, ht_score, at, at_score)
+                if game['id'] in ml_ids:
+                    g.cursor.execute('select * from ml_bets where id = \'{}\''.format(game['id']))
+                    rows = g.cursor.fetchall()
+                    processMLBetResults(rows,ht,ht_score,at,at_score)
+                g.cursor.execute('INSERT INTO scores VALUES (\'{}\',\'{}\',{},\'{}\',{})'.format(game['id'],ht,ht_score,at,at_score))
+
+def processMLBetResults(ls,ht,hts,at,ats):
+    for row in ls:
+        team_bet_on = row[2]
+        book = row[3]
+        amt = float(row[4])
+        odds = float(row[5])
+        if team_bet_on == ht:
+            if hts > ats:
+                #won bet
+                payout = amt * odds
+                updateBalance(book,payout)
+        elif team_bet_on == at:
+            if ats > hts:
+                payout = amt * odds
+                updateBalance(book,payout)
+
+def processSpreadBetResults(ls, ht, hts, at, ats):
+    # spread_bets (id VARCHAR(100), sportkey VARCHAR(100),team_bet_on VARCHAR(100), book_bet_at VARCHAR(100), amount_bet FLOAT(7,2), spread_offered FLOAT(7,2), line_offered FLOAT(7,2), CONSTRAINT id_book_team PRIMARY KEY (id,team_bet_on,book_bet_at))')
+
+    for row in ls:
+        team_bet_on = row[2]
+        book = row[3]
+        amt = float(row[4])
+        spread = float(row[5])
+        price = float(row[6])
+
+        if team_bet_on == ht:
+            if spread > 0:
+                if ats-hts < spread:
+                    #won bet!
+                    payout = amt * price 
+                    updateBalance(book,payout)
+            elif spread < 0:
+                spread = -1*spread
+                if hts - ats > spread:
+                    #won bet
+                    payout = amt * price 
+                    updateBalance(book,payout)
+        elif team_bet_on == at:
+            if spread > 0:
+                if hts-ats < spread:
+                    #won bet!
+                    payout = amt * price 
+                    updateBalance(book,payout)
+            elif spread < 0:
+                spread = -1*spread
+                if ats - hts > spread:
+                    #won bet
+                    payout = amt * price 
+                    updateBalance(book,payout)
+
+def updateBalance(book, amount):
+    g.cursor('select amount from balance where book = \'{}\''.format(book))
+    row = self.cursor.fetchall()
+    cur_amt = float(row[0][0])
+    new_amt = cur_amt + amount
+    g.cursor('update balance set amount = {} where book = \'{}\''.format(new_amt,book))

@@ -17,7 +17,6 @@ def create_app(test_config=None):
     from . import auth 
     app.register_blueprint(auth.bp)
     app.register_blueprint(bets.bp)
-    app.add_url_rule('/', endpoint='index')
     helper_funcs.init_app(app)
 
     return app

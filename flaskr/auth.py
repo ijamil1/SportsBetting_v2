@@ -1,5 +1,4 @@
 import functools
-import pymysql 
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for, current_app
 )
@@ -16,24 +15,7 @@ def load_logged_in_user_and_create_db_conn():
     else:
         g.user = 1
         
-    
 
-def get_db():
-    g.connection = pymysql.connect(host = current_app.config['DBENDPOINT'], user = current_app.config['USERNAME'], password = current_app.config['PW'], database = current_app.config['DB'], autocommit=True)
-    g.cursor = g.connection.cursor()
-    helper_funcs.create_scores_table(g.cursor)
-    helper_funcs.create_ML_table(g.cursor)
-    helper_funcs.create_spreads_table(g.cursor)
-    helper_funcs.create_balance_table(g.cursor)
-    helper_funcs.createSpreadBetsTable(g.cursor)
-    helper_funcs.createMLBetsTable(g.cursor)
-    helper_funcs.create_users_table(g.cursor)
-
-def close_db(e=None):
-    db = g.pop('connection', None)
-
-    if db is not None:
-        db.close()
 
 @bp.route('/register', methods=('GET', 'POST'))
 def register():
@@ -48,7 +30,7 @@ def register():
         elif not password:
             error = 'Password is required.'
         if error is None:
-            get_db()
+            helper_funcs.get_db()
             cursor = g.cursor
             cursor.execute("INSERT INTO users (username, password) VALUES (\'{}\', \'{}\')".format(username,password))
             return redirect(url_for("auth.login"))
@@ -64,7 +46,7 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        get_db()
+        helper_funcs.get_db()
         cursor = g.cursor
         error = None
         cursor.execute('SELECT * FROM users WHERE username = \'{}\''.format(username))
