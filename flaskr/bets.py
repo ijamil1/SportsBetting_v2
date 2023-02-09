@@ -4,9 +4,7 @@ from flask import (
 from werkzeug.exceptions import abort
 
 from flaskr.auth import login_required
-from flaskr.auth import get_db
-from helper import get_inseason_sports, uploadMLodds, uploadSpreads
-import requests
+from flaskr.helper_funcs import get_db, get_inseason_sports, uploadMLodds, uploadSpreads
 import datetime
 
 bp = Blueprint('bets', __name__)

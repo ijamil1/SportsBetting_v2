@@ -1,9 +1,6 @@
 import os
-import requests
-import pymysql
-import datetime 
 from flask import Flask, session
-from . import auth, bets
+from . import auth, bets, helper_funcs
 
 
 def create_app(test_config=None):
@@ -21,8 +18,6 @@ def create_app(test_config=None):
     app.register_blueprint(auth.bp)
     app.register_blueprint(bets.bp)
     app.add_url_rule('/', endpoint='index')
+    helper_funcs.init_app(app)
 
     return app
-
-def init_app(app):
-    app.teardown_appcontext(auth.close_db)
