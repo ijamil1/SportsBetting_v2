@@ -5,7 +5,10 @@
   <h1>Mock Betting</h1>
   <ul>
     {% if g.user %}
-      <li><a href="{{ url_for('auth.logout') }}">Log Out</a>
+      <li><a href="{{ url_for('auth.logout') }}">Log Out</a></li>
+      <li><a href="{{url_for('bets.index')}}">Home</a></li>
+      <li><a href ="{{url_for('bets.get_spreads')}}">Spreads</a></li>
+      <li><a href="{{url_for('bets.get_ml')}}">Moneylines</a></li>
     {% else %}
       <li><a href="{{ url_for('auth.register') }}">Register</a>
       <li><a href="{{ url_for('auth.login') }}">Log In</a>

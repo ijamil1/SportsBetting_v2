@@ -15,6 +15,10 @@ bp = Blueprint('bets', __name__)
 def index():
     if request.method == 'GET':
         get_db()
+        #this block deletes games from spreads and moneyline table which have already occurred
+        deleteSpreads()  
+        deleteML()
+        #
         uploadScores()
         return render_template('home.html')
     elif request.method == 'POST':

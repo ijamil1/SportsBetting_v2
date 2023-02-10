@@ -289,7 +289,7 @@ def processSpreadBetResults(ls, ht, hts, at, ats):
 
 def updateBalance(book, amount):
     g.cursor('select amount from balance where book = \'{}\''.format(book))
-    row = self.cursor.fetchall()
+    row = g.cursor.fetchall()
     cur_amt = float(row[0][0])
     new_amt = cur_amt + amount
     g.cursor('update balance set amount = {} where book = \'{}\''.format(new_amt,book))
