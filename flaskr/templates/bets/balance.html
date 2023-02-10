@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}Balances{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+<ul>
+    {% for row in data['results'] %}
+        <li> {{row[0]}}: ${{row[1]}}</li>
+        {% if not loop.last %}
+            <hr>
+      {% endif %}
+    {% endfor %}
+</ul>
+<hr> 
+
+<form method="post">
+    <label for="book">Choose a book you'd like to deposit money into</label>
+    <select name="book" id="book">
+        {% for name in data['mybooks'].split(',') %}
+            <option value="{{name}}">{{name}}</option>
+        {% endfor %}
+    </select><br><br>
+    <label for="amount">Enter a positive dollar amount</label>
+    <input type="text" id="amount" name="amount"><br><br>
+    <input type="submit" value="Submit">
+</form>
+
+{% endblock %}

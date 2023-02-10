@@ -1,5 +1,5 @@
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, url_for, current_app
+    Blueprint, flash, g, redirect, render_template, request, url_for, current_app, session
 )
 from werkzeug.exceptions import abort
 
@@ -94,55 +94,24 @@ def get_ml(sport=None):
         return render_template('bets/submit_sport.html', data=get_inseason_sports())
 
 
-def get_post(id, check_author=True):
-    post = get_db().execute(
-        'SELECT p.id, title, body, created, author_id, username'
-        ' FROM post p JOIN user u ON p.author_id = u.id'
-        ' WHERE p.id = ?',
-        (id,)
-    ).fetchone()
-
-    if post is None:
-        abort(404, f"Post id {id} doesn't exist.")
-
-    if check_author and post['author_id'] != g.user['id']:
-        abort(403)
-
-    return post
-
-
-@bp.route('/<int:id>/update', methods=('GET', 'POST'))
+@bp.route('/Balances', methods = ('GET', 'POST'))
 @login_required
-def update(id):
-    post = get_post(id)
-
-    if request.method == 'POST':
-        title = request.form['title']
-        body = request.form['body']
-        error = None
-
-        if not title:
-            error = 'Title is required.'
-
-        if error is not None:
-            flash(error)
+def add_get_Balance():
+    get_db()
+    if request.method == 'GET':
+        g.cursor.execute('select book, amount from balance where username = \'{}\''.format(session.get('user_id')))
+        return render_template('bets/balance.html',data={'mybooks': current_app.config['MY_BOOKS'], 'results':g.cursor.fetchall()})
+    else:
+        #post
+        book = request.form.get('book')
+        amount = float(request.form.get('amount'))
+        g.cursor.execute('select * from balance where username = \'{}\' and book = \'{}\''.format(session.get('user_id'),book))
+        rows = g.cursor.fetchall()
+        if len(rows) > 0:
+            #update book
+            g.cursor.execute('UPDATE balance SET amount = {} WHERE username = \'{}\' and book = \'{}\''.format(amount,session.get('user_id'),book))
         else:
-            db = get_db()
-            db.execute(
-                'UPDATE post SET title = ?, body = ?'
-                ' WHERE id = ?',
-                (title, body, id)
-            )
-            db.commit()
-            return redirect(url_for('blog.index'))
+            #insert book
+            g.cursor.execute('INSERT into balance VALUES (\'{}\',\'{}\',{})'.format(session.get('user_id'),book,amount))
+        return redirect(url_for('bets.add_get_Balance'))
 
-    return render_template('blog/update.html', post=post)
-
-@bp.route('/<int:id>/delete', methods=('POST',))
-@login_required
-def delete(id):
-    get_post(id)
-    db = get_db()
-    db.execute('DELETE FROM post WHERE id = ?', (id,))
-    db.commit()
-    return redirect(url_for('blog.index'))

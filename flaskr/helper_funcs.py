@@ -19,7 +19,7 @@ def create_spreads_table(cursor):
     cursor.execute('CREATE TABLE IF NOT EXISTS spreads (id VARCHAR(100), sport_key VARCHAR(50), Home_Team VARCHAR(100), Home_Team_Spread FLOAT(7,2), Home_Team_Odds FLOAT(7,2), Away_Team VARCHAR(100), Away_Team_Spread FLOAT(7,2), Away_Team_Odds FLOAT(7,2), book  VARCHAR(50), Start_Time DATETIME, Insert_Time DATETIME, CONSTRAINT id_book_time PRIMARY KEY (id,book, Insert_Time))')
 
 def create_balance_table(cursor):
-    cursor.execute('CREATE TABLE IF NOT EXISTS balance (book VARCHAR(50), amount FLOAT(7,2))')
+    cursor.execute('CREATE TABLE IF NOT EXISTS balance (username VARCHAR(100),book VARCHAR(50), amount FLOAT(7,2), CONSTRAINT user_and_book PRIMARY KEY (username,book))')
 
 def createSpreadBetsTable(cursor):
     cursor.execute('CREATE TABLE IF NOT EXISTS spread_bets (id VARCHAR(100), sportkey VARCHAR(100),team_bet_on VARCHAR(100), book_bet_at VARCHAR(100), amount_bet FLOAT(7,2), spread_offered FLOAT(7,2), line_offered FLOAT(7,2), CONSTRAINT id_book_team PRIMARY KEY (id,team_bet_on,book_bet_at))')

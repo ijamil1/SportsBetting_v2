@@ -20,18 +20,23 @@ def load_logged_in_user_and_create_db_conn():
 @bp.route('/register', methods=('GET', 'POST'))
 def register():
     if request.method == 'POST':
+        helper_funcs.get_db()
         username = request.form['username']
         password = request.form['password']
-        
+        cursor = g.cursor
         error = None
-
+        cursor.execute('select username from users')
+        unames = []
+        rows = cursor.fetchall()
+        for row in rows:
+            unames.append(row[0])
         if not username:
             error = 'Username is required.'
         elif not password:
             error = 'Password is required.'
+        elif username in unames:
+            error = 'Username already taken'
         if error is None:
-            helper_funcs.get_db()
-            cursor = g.cursor
             cursor.execute("INSERT INTO users (username, password) VALUES (\'{}\', \'{}\')".format(username,password))
             return redirect(url_for("auth.login"))
         else:
@@ -57,7 +62,7 @@ def login():
             error = 'Incorrect password.'
 
         if error is None:
-            session['user_id'] = user[0]
+            session['user_id'] = user[1] #actually username
             return redirect(url_for('bets.index'))
 
         flash(error)
