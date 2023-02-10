@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}Moneylines{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+    {% for key, value in data.items() %}
+        <article class="lines">
+        <header>
+            <div>
+            <h1>{{ value[0] }} vs {{ value[1] }} at {{value[2]}}</h1>
+            </div>
+        </header>
+        <ul>
+            {% for book, offers in value[3].items()%}
+            <li>{{book}}
+                <ul>
+                {{value[0]}}: {{offers['ht_line']}}
+                </ul>
+                <ul>
+                {{value[1]}}: {{offers['at_line']}}
+                </ul>
+            </li>
+            {% endfor %}
+        </ul>
+        </article>
+        {% if not loop.last %}
+        <hr>
+        {% endif %}
+    {% endfor %}
+{% endblock %}

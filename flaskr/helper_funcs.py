@@ -293,3 +293,45 @@ def updateBalance(book, amount):
     cur_amt = float(row[0][0])
     new_amt = cur_amt + amount
     g.cursor('update balance set amount = {} where book = \'{}\''.format(new_amt,book))
+
+def reformatSpreadsQueryResult(rows):
+    spread_dict = {}
+    for row in rows:
+        id = row[0]
+        if id in spread_dict:
+            #game in dict
+            bookie_dict = spread_dict[id][3]
+            book = row[8]
+            bookie_dict[book] = {'ht_spread':float(row[3]), 'ht_line': float(row[4]), 'at_spread': float(row[6]), 'at_line':float(row[7])}
+
+
+        else:
+            #game not in dict
+            ht = row[2]
+            at = row[5]
+            book = row[8]
+            start = row[9]
+            bookie_dict = {}
+            l = [ht,at,start,bookie_dict]
+            bookie_dict[book] = {'ht_spread':float(row[3]), 'ht_line': float(row[4]), 'at_spread': float(row[6]), 'at_line':float(row[7])}
+            spread_dict[id] = l
+    return spread_dict
+
+def reformatMLQueryResult(rows):
+    ml_dict = {}
+    for row in rows:
+        id = row[0]
+        if id in ml_dict:
+            #game in dict
+            bookie_dict = ml_dict[id][3]
+            bookie_dict[row[6]] = {'ht_line': float(row[3]), 'at_line':float(row[5])}
+        else:
+            #game not in dict
+            ht  = row[2]
+            at = row[4]
+            start = row[7]
+            bookie_dict = {}
+            l = [ht,at,start,bookie_dict]
+            bookie_dict[row[6]] = {'ht_line': float(row[3]), 'at_line':float(row[5])}
+            ml_dict[id] = l
+    return ml_dict

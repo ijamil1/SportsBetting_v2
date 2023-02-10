@@ -4,7 +4,7 @@ from flask import (
 from werkzeug.exceptions import abort
 
 from flaskr.auth import login_required
-from flaskr.helper_funcs import get_db, get_inseason_sports, uploadMLodds, uploadSpreads, deleteML, deleteSpreads,uploadScores
+from flaskr.helper_funcs import get_db, get_inseason_sports, uploadMLodds, uploadSpreads, deleteML, deleteSpreads,uploadScores, reformatMLQueryResult, reformatSpreadsQueryResult
 import datetime
 
 bp = Blueprint('bets', __name__)
@@ -40,7 +40,7 @@ def get_spreads(sport=None):
         get_db()
         g.cursor.execute('SELECT * FROM spreads WHERE sport_key = \'{}\' and Start_Time > \'{}\''.format(sport,datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%S')))
         rows = g.cursor.fetchall()
-        return render_template('bets/display_sp.html', data=rows)
+        return render_template('bets/display_sp2.html', data=reformatSpreadsQueryResult(rows))
 
     else:
         #sport is none
@@ -70,7 +70,7 @@ def get_ml(sport=None):
         get_db()
         g.cursor.execute('SELECT * FROM moneyline WHERE sport_key = \'{}\' and Start_Time > \'{}\''.format(sport,datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%S')))
         rows = g.cursor.fetchall()
-        return render_template('bets/display_ml.html', data=rows)
+        return render_template('bets/display_ml2.html', data=reformatMLQueryResult(rows))
 
     else:
         #sport is none
