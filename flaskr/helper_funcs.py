@@ -3,7 +3,7 @@ import datetime
 import requests
 import pymysql
 from flask import (
-   g, current_app
+   g, current_app, session
 )
 
 def init_app(app):
@@ -22,10 +22,10 @@ def create_balance_table(cursor):
     cursor.execute('CREATE TABLE IF NOT EXISTS balance (username VARCHAR(100),book VARCHAR(50), amount FLOAT(7,2), CONSTRAINT user_and_book PRIMARY KEY (username,book))')
 
 def createSpreadBetsTable(cursor):
-    cursor.execute('CREATE TABLE IF NOT EXISTS spread_bets (id VARCHAR(100), sportkey VARCHAR(100),team_bet_on VARCHAR(100), book_bet_at VARCHAR(100), amount_bet FLOAT(7,2), spread_offered FLOAT(7,2), line_offered FLOAT(7,2), CONSTRAINT id_book_team PRIMARY KEY (id,team_bet_on,book_bet_at))')
+    cursor.execute('CREATE TABLE IF NOT EXISTS spread_bets (id VARCHAR(100), sportkey VARCHAR(100),team_bet_on VARCHAR(100), book_bet_at VARCHAR(100), amount_bet FLOAT(7,2), spread_offered FLOAT(7,2), line_offered FLOAT(7,2), username VARCHAR(100), settled INT, CONSTRAINT id_book_team_user PRIMARY KEY (id,team_bet_on,book_bet_at, username))')
 
 def createMLBetsTable(cursor):
-    cursor.execute('CREATE TABLE IF NOT EXISTS ml_bets (id VARCHAR(100), sportkey VARCHAR(100),team_bet_on VARCHAR(100), book_bet_at VARCHAR(100), amount_bet FLOAT(7,2), line_offered FLOAT(7,2), CONSTRAINT id_book_team PRIMARY KEY (id,team_bet_on,book_bet_at))')
+    cursor.execute('CREATE TABLE IF NOT EXISTS ml_bets (id VARCHAR(100), sportkey VARCHAR(100),team_bet_on VARCHAR(100), book_bet_at VARCHAR(100), amount_bet FLOAT(7,2), line_offered FLOAT(7,2), username VARCHAR(100), settled INT, CONSTRAINT id_book_team_user PRIMARY KEY (id,team_bet_on,book_bet_at,username))')
 
 def create_users_table(cursor):
     cursor.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER AUTO_INCREMENT, username VARCHAR(100), password VARCHAR(100), PRIMARY KEY (id))')
@@ -161,13 +161,13 @@ def check_for_ml_dups(game_id, ht_price, at_price, book):
 def deleteSpreads():
     utc_now = datetime.datetime.now(datetime.timezone.utc)
     utc_now_str = utc_now.strftime('%Y-%m-%d %H:%M:%S')
-    query = 'DELETE from spreads where Start_Time < \'{}\''.format(utc_now_str)
+    query = 'DELETE from spreads where TIMESTAMPADD(DAY,4,Start_Time) < \'{}\''.format(utc_now_str)
     g.cursor.execute(query)
 
 def deleteML():
     utc_now = datetime.datetime.now(datetime.timezone.utc)
     utc_now_str = utc_now.strftime('%Y-%m-%d %H:%M:%S')
-    query = 'DELETE from moneyline where Start_Time < \'{}\''.format(utc_now_str)
+    query = 'DELETE from moneyline where TIMESTAMPADD(DAY,4,Start_Time) < \'{}\''.format(utc_now_str)
     g.cursor.execute(query)
 
 
@@ -185,19 +185,19 @@ def uploadScores():
     #, checks that we bet on this game and that the game is not already in the score table, and then queries the bets we made on the game and updates  
     # the balances accordingly; it also uploads the score to a score table;
     # this function runs each time that the user logs in
-
+    username = session.get('user_id')
     spread_ids = []
     ml_ids = []
     bet_on_ids = []
     bet_on_sportkeys = []
-    g.cursor.execute('SELECT id, sportkey from ml_bets')
+    g.cursor.execute('SELECT id, sportkey from ml_bets where username = \'{}\' and settled = 0'.format(username))
     rows = g.cursor.fetchall()
     for row in rows:
         if row[0] not in ml_ids:
             ml_ids.append(row[0])
         if row[1] not in bet_on_sportkeys:
             bet_on_sportkeys.append(row[1])
-    g.cursor.execute('SELECT id, sportkey from spread_bets')
+    g.cursor.execute('SELECT id, sportkey from spread_bets where username = \'{}\' and settled = 0'.format(username))
     rows = g.cursor.fetchall()
     for row in rows:
         if row[0] not in spread_ids:
@@ -206,7 +206,7 @@ def uploadScores():
             bet_on_sportkeys.append(row[1])
 
     score_ids = getIdsScoresTbl()
-    bet_on_ids = set(ml_ids).union(spread_ids)
+    bet_on_ids = set(ml_ids).union(spread_ids) #games bet on by user that have not been settled yet
 
     for key in bet_on_sportkeys:
         json = requests.get(current_app.config['API']+key+'/scores/',params={'apiKey':current_app.config['APIKEY'],'daysFrom':3}).json()
@@ -215,7 +215,7 @@ def uploadScores():
         ht_score = -1
         at_score = -1
         for game in json:
-            if game['completed'] and (game['id'] in bet_on_ids) and game['id'] not in score_ids:
+            if game['completed'] and (game['id'] in bet_on_ids):
                 scores = game['scores']
                 for score in scores:
                     cur_team = score['name']
@@ -227,14 +227,30 @@ def uploadScores():
                         at = cur_team
                         at_score = float(cur_score)
                 if game['id'] in spread_ids:
-                    g.cursor.execute('select * from spread_bets where id = \'{}\''.format(game['id']))
+                    g.cursor.execute('select * from spread_bets where id = \'{}\' and username = \'{}\' and settled = 0'.format(game['id']),username)
                     rows = g.cursor.fetchall()
                     processSpreadBetResults(rows, ht, ht_score, at, at_score)
+                    settleBets(rows,'sp')
                 if game['id'] in ml_ids:
-                    g.cursor.execute('select * from ml_bets where id = \'{}\''.format(game['id']))
+                    g.cursor.execute('select * from ml_bets where id = \'{}\' and username = \'{}\' and settled = 0'.format(game['id']),username)
                     rows = g.cursor.fetchall()
                     processMLBetResults(rows,ht,ht_score,at,at_score)
-                g.cursor.execute('INSERT INTO scores VALUES (\'{}\',\'{}\',{},\'{}\',{})'.format(game['id'],ht,ht_score,at,at_score))
+                    settleBets(rows, 'ml')
+                if game['id'] not in score_ids:
+                    g.cursor.execute('INSERT INTO scores VALUES (\'{}\',\'{}\',{},\'{}\',{})'.format(game['id'],ht,ht_score,at,at_score))
+
+def settleBets(data, type_of_bet):
+    if type_of_bet == 'ml':
+        for row in data:
+            id = row[0]
+            username = session.get('user_id')
+            g.cursor.execute('UPDATE ml_bets SET settled = 1 WHERE id = \'{}\' and username = \'{}\''.format(id,username))
+    else:
+        for row in data:
+            id = row[0]
+            username = session.get('user_id')
+            g.cursor.execute('UPDATE spread_bets SET settled = 1 WHERE id = \'{}\' and username = \'{}\''.format(id,username))
+
 
 def processMLBetResults(ls,ht,hts,at,ats):
     for row in ls:
@@ -288,11 +304,11 @@ def processSpreadBetResults(ls, ht, hts, at, ats):
                     updateBalance(book,payout)
 
 def updateBalance(book, amount):
-    g.cursor('select amount from balance where book = \'{}\''.format(book))
+    g.cursor('select amount from balance where book = \'{}\' and  username = \'{}\''.format(book, session.get('user_id')))
     row = g.cursor.fetchall()
     cur_amt = float(row[0][0])
     new_amt = cur_amt + amount
-    g.cursor('update balance set amount = {} where book = \'{}\''.format(new_amt,book))
+    g.cursor('update balance set amount = {} where book = \'{}\' and username = \'{}\''.format(new_amt,book,session.get('user_id')))
 
 def reformatSpreadsQueryResult(rows):
     spread_dict = {}
@@ -303,8 +319,6 @@ def reformatSpreadsQueryResult(rows):
             bookie_dict = spread_dict[id][3]
             book = row[8]
             bookie_dict[book] = {'ht_spread':float(row[3]), 'ht_line': float(row[4]), 'at_spread': float(row[6]), 'at_line':float(row[7])}
-
-
         else:
             #game not in dict
             ht = row[2]

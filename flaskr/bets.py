@@ -115,3 +115,17 @@ def add_get_Balance():
             g.cursor.execute('INSERT into balance VALUES (\'{}\',\'{}\',{})'.format(session.get('user_id'),book,amount))
         return redirect(url_for('bets.add_get_Balance'))
 
+@bp.route('/getBets', methods = ('GET'))
+@login_required
+def getBets():
+    username = session.get('user_id')
+    get_db()
+    g.cursor.execute('select * from spread_bets where username = \'{}\' and settled = 1'.format(username))
+    settled_sp_bets_rows = g.cursor.fetchall()
+    g.cursor.execute('select * from spread_bets where username = \'{}\' and settled = 0'.format(username))
+    nonsettled_sp_bets_rows = g.cursor.fetchall()
+    g.cursor.execute('select * from ml_bets where username = \'{}\' and settled = 1'.format(username))
+    settled_ml_bets_rows = g.cursor.fetchall()
+    g.cursor.execute('select * from ml_bets where username = \'{}\' and settled = 0'.format(username))
+    nonsettled_ml_bets_rows = g.cursor.fetchall()
+    
