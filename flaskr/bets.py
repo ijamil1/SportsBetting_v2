@@ -4,7 +4,7 @@ from flask import (
 from werkzeug.exceptions import abort
 
 from flaskr.auth import login_required
-from flaskr.helper_funcs import get_db, get_inseason_sports, uploadMLodds, uploadSpreads, deleteML, deleteSpreads,uploadScores, reformatMLQueryResult, reformatSpreadsQueryResult
+from flaskr.helper_funcs import get_db, get_inseason_sports, uploadMLodds, uploadSpreads, deleteML, deleteSpreads,uploadScores, reformatMLQueryResult, reformatSpreadsQueryResult, reformatBets
 import datetime
 
 bp = Blueprint('bets', __name__)
@@ -128,4 +128,22 @@ def getBets():
     settled_ml_bets_rows = g.cursor.fetchall()
     g.cursor.execute('select * from ml_bets where username = \'{}\' and settled = 0'.format(username))
     nonsettled_ml_bets_rows = g.cursor.fetchall()
-    
+    d = reformatBets(settled_ml_bets_rows, settled_sp_bets_rows,nonsettled_ml_bets_rows,nonsettled_sp_bets_rows)
+    return render_template('bets/display_bets.html', data=d)
+
+
+# data
+    #nonsettled
+            #game id
+                #ml
+                    #list of dicts
+                #sp
+                    #list of dicts
+    #settled
+            #game id
+                #ml
+                    #list of dicts
+                #sp
+                    #list of dicts
+                #score
+                    #dict
