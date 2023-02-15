@@ -109,7 +109,7 @@ def add_get_Balance():
         rows = g.cursor.fetchall()
         if len(rows) > 0:
             #update book
-            g.cursor.execute('UPDATE balance SET amount = {} WHERE username = \'{}\' and book = \'{}\''.format(amount,session.get('user_id'),book))
+            g.cursor.execute('UPDATE balance SET amount = {} WHERE username = \'{}\' and book = \'{}\''.format(amount+rows[0][2],session.get('user_id'),book))
         else:
             #insert book
             g.cursor.execute('INSERT into balance VALUES (\'{}\',\'{}\',{})'.format(session.get('user_id'),book,amount))
@@ -150,20 +150,94 @@ def getBets():
 @bp.route('/ml_bet/<id>', methods = ('GET','POST'))
 @login_required
 def makeBet_ml(id=None):
+    if id is None:
+        return redirect(url_for('bets.get_ml'))
+    get_db()
     if request.method == 'GET':
-
-        get_db()
         g.cursor.execute('SELECT * FROM moneyline WHERE id = \'{}\''.format(id))
         rows = g.cursor.fetchall()
         data = reformatMLQueryResult(rows)
-        return render_template('bets/display_game_ml.html', data=data[id])
+        mybooks_str = current_app.config['MY_BOOKS']
+        mybooks_list = mybooks_str.split(',')
+        data['books']=mybooks_list
+        data['id'] = id
+        d = data
+        return render_template('bets/display_game_ml.html', data=d)
+    else:
+        #post
+        book =  request.form.get('books')
+        team = request.form.get('team')
+        amt = float(request.form.get('amount'))
+        username = session.get('user_id')
+        g.cursor.execute('select amount from balance where book = \'{}\' and username = \'{}\''.format(book,username))
+        cur_amt = float(g.cursor.fetchall()[0][0])
+        if amt > cur_amt :
+            #not enough money
+            return redirect(url_for('bets.makeBet_ml',id=id))
+        else:
+            g.cursor.execute('UPDATE balance set amount = {} where book = \'{}\' and username = \'{}\''.format(cur_amt-amt,book,username))  
+
+        g.cursor.execute('select * from ml_bets where id = \'{}\' and team_bet_on = \'{}\' and book_bet_at = \'{}\' and username = \'{}\''.format(id,team,book,username))
+        rows = g.cursor.fetchall()
+        if rows is None or len(rows) == 0:
+            #haven't bet on this yet
+            g.cursor.execute('select sport_key, Home_Team, Home_Team_Dec_Odds, Away_Team_Dec_Odds from moneyline where id = \'{}\' and book = \'{}\''.format(id,book))
+            ml_row = g.cursor.fetchall()[0]
+            sportkey = ml_row[0]
+            if team == ml_row[1]:
+                #home team
+                g.cursor.execute('INSERT into ml_bets VALUES (\'{}\',\'{}\',\'{}\',\'{}\',{},{},\'{}\',0)'.format(id,sportkey,team,book,amt,ml_row[2],username))
+            else:
+                #away team
+                g.cursor.execute('INSERT into ml_bets VALUES (\'{}\',\'{}\',\'{}\',\'{}\',{},{},\'{}\',0)'.format(id,sportkey,team,book,amt,ml_row[3],username))
+            return redirect(url_for('bets.getBets'))
+        else:
+            return redirect('bets.get_ml',sport=rows[0][1])
+        
 
 @bp.route('/sp_bet/<id>', methods = ('GET','POST'))
 @login_required
 def makeBet_sp(id=None):
+    if id is None:
+        return redirect(url_for('bets.get_spreads'))
     if request.method == 'GET':
         get_db()
         g.cursor.execute('SELECT * FROM spreads WHERE id = \'{}\''.format(id))
         rows = g.cursor.fetchall()
         data = reformatSpreadsQueryResult(rows)
-        return render_template('bets/display_game_sp.html', data=data[id])
+        mybooks_str = current_app.config['MY_BOOKS']
+        mybooks_list = mybooks_str.split(',')
+        data['books']=mybooks_list
+        data['id'] = id
+        d = data
+        return render_template('bets/display_game_sp.html', data=d)
+    else:
+        #post
+        book =  request.form.get('books')
+        team = request.form.get('team')
+        amt = request.form.get('amount')
+        username = session.get('user_id')
+        g.cursor.execute('select amount from balance where book = \'{}\' and username = \'{}\''.format(book,username))
+        cur_amt = float(g.cursor.fetchall()[0][0])
+        if amt > cur_amt :
+            #not enough money
+            return redirect(url_for('bets.makeBet_ml',id=id))
+        else:
+            g.cursor.execute('UPDATE balance set amount = {} where book = \'{}\' and username = \'{}\''.format(cur_amt-amt,book,username))  
+
+        g.cursor.execute('select * from spread_bets where id = \'{}\' and team_bet_on = \'{}\' and book_bet_at = \'{}\' and username = \'{}\''.format(id,team,book,username))
+        rows = g.cursor.fetchall()
+        if rows is None or len(rows) == 0:
+            #haven't bet on this yet
+            g.cursor.execute('select sport_key, Home_Team, Home_Team_Spread, Home_Team_Odds, Away_Team_Spread, Away_Team_Odds from spreads where id = \'{}\' and book = \'{}\''.format(id,book))
+            sp_row = g.cursor.fetchall()[0]
+            sportkey = sp_row[0]
+            if team == sp_row[1]:
+                #home team
+                g.cursor.execute('INSERT into spread_bets VALUES (\'{}\',\'{}\',\'{}\',\'{}\',{},{},{},\'{}\',0)'.format(id,sportkey,team,book,amt,sp_row[2],sp_row[3],username))
+            else:
+                #away team
+                g.cursor.execute('INSERT into spread_bets VALUES (\'{}\',\'{}\',\'{}\',\'{}\',{},{},{},\'{}\',0)'.format(id,sportkey,team,book,amt,sp_row[4],sp_row[5],username))
+            return redirect(url_for('bets.getBets'))
+        else:
+            return redirect('bets.get_ml',sport=rows[0][1])

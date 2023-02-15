@@ -9,21 +9,39 @@
         <article class="lines">
         <header>
             <div>
-            <h1>{{ data[0] }} vs {{ data[1] }} at {{data[2]}}</h1>
+            <h1>{{ data[data['id']][0] }} vs {{ data[data['id']][1] }} at {{data[data['id']][2]}}</h1>
             </div>
         </header>
         <ul>
-            {% for book, offers in data[3].items()%}
+            {% for book, offers in data[data['id']][3].items()%}
             <li>{{book}}
                 <ul>
-                {{data[0]}}: {{offers['ht_spread']}}, ({{offers['ht_line']}})
+                {{data[data['id']][0]}}: {{offers['ht_spread']}}, ({{offers['ht_line']}})
                 </ul>
                 <ul>
-                {{data[1]}}: {{offers['at_spread']}}, ({{offers['at_line']}})
+                {{data[data['id']][1]}}: {{offers['at_spread']}}, ({{offers['at_line']}})
                 </ul>
             </li>
+            <br>
             {% endfor %}
         </ul>
+        <br>
+        <form method="post" action="{{url_for('bets.makeBet_sp',id=data['id'])}}">
+            <label for="books">Book</label>
+            <select id="books" name="books">
+                {% for key in data['books'] %}
+                    <option value="{{key}}">{{key}}</option>
+                {% endfor %}
+            </select>
+            <label for="team">Team you're placing Spread bet on: </label>
+            <select id="team" name="team">
+                <option value="{{data[data['id']][0]}}">{{data[data['id']][0]}}</option>
+                <option value="{{data[data['id']][1]}}">{{data[data['id']][1]}}</option>
+            </select>
+            <label for="amount">Bet Amount</label>
+            <input type="text" id="amount" name="amount">
+            <input type="submit" value="Submit">
+        </form>
         </article>
         
 {% endblock %}
