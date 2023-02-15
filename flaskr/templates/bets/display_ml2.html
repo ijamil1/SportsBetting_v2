@@ -9,12 +9,13 @@
         <article class="lines">
         <header>
             <div>
-            <h1>{{ value[0] }} vs {{ value[1] }} at {{value[2]}}</h1>
+            <h1><a href ="{{url_for('bets.makeBet_ml', id=key)}}">{{ value[0] }} vs {{ value[1] }} at {{value[2]}}</a></h1>
             </div>
         </header>
         <ul>
             {% for book, offers in value[3].items()%}
             <li>{{book}}
+                <br>
                 <ul>
                 {{value[0]}}: {{offers['ht_line']}}
                 </ul>
@@ -22,6 +23,7 @@
                 {{value[1]}}: {{offers['at_line']}}
                 </ul>
             </li>
+            <br>
             {% endfor %}
         </ul>
         </article>

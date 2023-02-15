@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}Game Details{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+    
+        <article class="lines">
+        <header>
+            <div>
+            <h1>{{ data[0] }} vs {{ data[1] }} at {{data[2]}}</h1>
+            </div>
+        </header>
+        <ul>
+            {% for book, offers in data[3].items()%}
+            <li>{{book}}
+                <br>
+                <ul>
+                {{data[0]}}: {{offers['ht_line']}}
+                </ul>
+                <ul>
+                {{data[1]}}: {{offers['at_line']}}
+                </ul>
+            </li>
+            <br>
+            {% endfor %}
+        </ul>
+        </article>
+        
+    
+{% endblock %}

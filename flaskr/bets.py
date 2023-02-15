@@ -115,7 +115,7 @@ def add_get_Balance():
             g.cursor.execute('INSERT into balance VALUES (\'{}\',\'{}\',{})'.format(session.get('user_id'),book,amount))
         return redirect(url_for('bets.add_get_Balance'))
 
-@bp.route('/getBets', methods = ('GET'))
+@bp.route('/getBets', methods = ('GET','POST'))
 @login_required
 def getBets():
     username = session.get('user_id')
@@ -130,7 +130,6 @@ def getBets():
     nonsettled_ml_bets_rows = g.cursor.fetchall()
     d = reformatBets(settled_ml_bets_rows, settled_sp_bets_rows,nonsettled_ml_bets_rows,nonsettled_sp_bets_rows)
     return render_template('bets/display_bets.html', data=d)
-
 
 # data
     #nonsettled
@@ -147,3 +146,24 @@ def getBets():
                     #list of dicts
                 #score
                     #dict
+
+@bp.route('/ml_bet/<id>', methods = ('GET','POST'))
+@login_required
+def makeBet_ml(id=None):
+    if request.method == 'GET':
+
+        get_db()
+        g.cursor.execute('SELECT * FROM moneyline WHERE id = \'{}\''.format(id))
+        rows = g.cursor.fetchall()
+        data = reformatMLQueryResult(rows)
+        return render_template('bets/display_game_ml.html', data=data[id])
+
+@bp.route('/sp_bet/<id>', methods = ('GET','POST'))
+@login_required
+def makeBet_sp(id=None):
+    if request.method == 'GET':
+        get_db()
+        g.cursor.execute('SELECT * FROM spreads WHERE id = \'{}\''.format(id))
+        rows = g.cursor.fetchall()
+        data = reformatSpreadsQueryResult(rows)
+        return render_template('bets/display_game_sp.html', data=data[id])

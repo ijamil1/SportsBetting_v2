@@ -9,7 +9,7 @@
         <article class="lines">
         <header>
             <div>
-            <h1>{{ value[0] }} vs {{ value[1] }} at {{value[2]}}</h1>
+            <h1><a href = "{{url_for('bets.makeBet_sp',id=key)}}">{{ value[0] }} vs {{ value[1] }} at {{value[2]}}</a></h1>
             </div>
         </header>
         <ul>
