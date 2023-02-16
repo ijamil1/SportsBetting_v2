@@ -4,8 +4,13 @@ from flask import (
 from werkzeug.exceptions import abort
 
 from flaskr.auth import login_required
-from flaskr.helper_funcs import get_db, get_inseason_sports, uploadMLodds, uploadSpreads, deleteML, deleteSpreads,uploadScores, reformatMLQueryResult, reformatSpreadsQueryResult, reformatSettledBets, reformatUnsettledBets
+from flaskr.upload_lines import *
+from flaskr.delete_lines import *
+from flaskr.html_helper_funcs import *
+from flaskr.miscellaneous_funcs import *
+from flaskr.scoring_helper_funcs import *
 import datetime
+
 
 bp = Blueprint('bets', __name__)
 
@@ -35,13 +40,13 @@ def index():
 @bp.route('/get_spreads/<sport>', methods=('GET', 'POST'))
 @login_required
 def get_spreads(sport=None):
+    get_db()
     if sport:
         #not none, so display moneylines for the sports
-        get_db()
+        
         g.cursor.execute('SELECT * FROM spreads WHERE sport_key = \'{}\' and Start_Time > \'{}\''.format(sport,datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%S')))
         rows = g.cursor.fetchall()
         return render_template('bets/display_sp2.html', data=reformatSpreadsQueryResult(rows))
-
     else:
         #sport is none
         if request.method == 'POST':
@@ -65,13 +70,13 @@ def get_spreads(sport=None):
 @bp.route('/get_moneylines/<sport>', methods=('GET', 'POST'))
 @login_required
 def get_ml(sport=None):
+    get_db()
     if sport:
         #not none, so display moneylines for the sports
-        get_db()
+        
         g.cursor.execute('SELECT * FROM moneyline WHERE sport_key = \'{}\' and Start_Time > \'{}\''.format(sport,datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%S')))
         rows = g.cursor.fetchall()
         return render_template('bets/display_ml2.html', data=reformatMLQueryResult(rows))
-
     else:
         #sport is none
         if request.method == 'POST':

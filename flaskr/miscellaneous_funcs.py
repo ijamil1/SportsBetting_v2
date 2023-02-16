@@ -2,7 +2,7 @@ import requests
 import pymysql
 from flaskr.create_tbls import *
 from flask import (
-   g, current_app, session
+   g, current_app
 )
 
 def init_app(app):

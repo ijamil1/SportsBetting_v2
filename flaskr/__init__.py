@@ -1,6 +1,6 @@
 import os
 from flask import Flask, session
-from . import auth, bets, helper_funcs
+from . import auth, bets, miscellaneous_funcs
 
 
 def create_app(test_config=None):
@@ -17,6 +17,6 @@ def create_app(test_config=None):
     from . import auth 
     app.register_blueprint(auth.bp)
     app.register_blueprint(bets.bp)
-    helper_funcs.init_app(app)
+    miscellaneous_funcs.init_app(app)
 
     return app
