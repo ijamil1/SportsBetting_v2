@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}Settled Bets{% endblock %}</h1>
+{% endblock %}
+
+{% block content %} 
+    <p>
+        {% for gameid, info in data.items() %}
+            <header>
+                <div>
+                    <h1>{{ info['score']['ht'] }} ({{info['score']['hts']}}) vs {{ info['score']['at']}} ({{info['score']['ats']}})</h1>
+                </div>
+            </header>
+            <ul>
+                <li>
+                    {% for ml_bet in info['ml']%}
+                        ${{ml_bet['amt']}} on {{ml_bet['bet_on']}} ({{ml_bet['line']}}) at {{ml_bet['book']}}        
+                    {% endfor %}
+                </li>
+            </ul>
+            <ul>
+                <li>
+                    {% for sp_bet in info['sp']%}
+                        ${{sp_bet['amt']}} on {{sp_bet['bet_on']}} (Spread: {{sp_bet['spread']}}, {{sp_bet['line']}}) at {{sp_bet['book']}}        
+                    {% endfor %}
+                </li>
+            </ul>
+            <hr>
+        {% endfor %}
+    </p> 
+{% endblock %}

@@ -4,7 +4,7 @@ from flask import (
 from werkzeug.exceptions import abort
 
 from flaskr.auth import login_required
-from flaskr.helper_funcs import get_db, get_inseason_sports, uploadMLodds, uploadSpreads, deleteML, deleteSpreads,uploadScores, reformatMLQueryResult, reformatSpreadsQueryResult, reformatBets
+from flaskr.helper_funcs import get_db, get_inseason_sports, uploadMLodds, uploadSpreads, deleteML, deleteSpreads,uploadScores, reformatMLQueryResult, reformatSpreadsQueryResult, reformatSettledBets, reformatUnsettledBets
 import datetime
 
 bp = Blueprint('bets', __name__)
@@ -115,21 +115,32 @@ def add_get_Balance():
             g.cursor.execute('INSERT into balance VALUES (\'{}\',\'{}\',{})'.format(session.get('user_id'),book,amount))
         return redirect(url_for('bets.add_get_Balance'))
 
-@bp.route('/getBets', methods = ('GET','POST'))
+@bp.route('/getSettledBets', methods = ('GET','POST'))
 @login_required
-def getBets():
+def getSettledBets():
     username = session.get('user_id')
     get_db()
     g.cursor.execute('select * from spread_bets where username = \'{}\' and settled = 1'.format(username))
     settled_sp_bets_rows = g.cursor.fetchall()
-    g.cursor.execute('select * from spread_bets where username = \'{}\' and settled = 0'.format(username))
-    nonsettled_sp_bets_rows = g.cursor.fetchall()
+   
     g.cursor.execute('select * from ml_bets where username = \'{}\' and settled = 1'.format(username))
     settled_ml_bets_rows = g.cursor.fetchall()
+    
+    d = reformatSettledBets(settled_ml_bets_rows, settled_sp_bets_rows)
+    return render_template('bets/display_settled_bets.html', data=d)
+
+@bp.route('/getUnsettledBets', methods = ('GET','POST'))
+@login_required
+def getUnsettledBets():
+    username = session.get('user_id')
+    get_db()
+    g.cursor.execute('select * from spread_bets where username = \'{}\' and settled = 0'.format(username))
+    nonsettled_sp_bets_rows = g.cursor.fetchall()
     g.cursor.execute('select * from ml_bets where username = \'{}\' and settled = 0'.format(username))
     nonsettled_ml_bets_rows = g.cursor.fetchall()
-    d = reformatBets(settled_ml_bets_rows, settled_sp_bets_rows,nonsettled_ml_bets_rows,nonsettled_sp_bets_rows)
-    return render_template('bets/display_bets.html', data=d)
+    d = reformatUnsettledBets(nonsettled_ml_bets_rows,nonsettled_sp_bets_rows)
+    return render_template('bets/display_unsettled_bets.html', data=d)
+
 
 # data
     #nonsettled
@@ -190,7 +201,7 @@ def makeBet_ml(id=None):
             else:
                 #away team
                 g.cursor.execute('INSERT into ml_bets VALUES (\'{}\',\'{}\',\'{}\',\'{}\',{},{},\'{}\',0)'.format(id,sportkey,team,book,amt,ml_row[3],username))
-            return redirect(url_for('bets.getBets'))
+            return redirect(url_for('bets.getUnsettledBets'))
         else:
             return redirect('bets.get_ml',sport=rows[0][1])
         
@@ -238,6 +249,6 @@ def makeBet_sp(id=None):
             else:
                 #away team
                 g.cursor.execute('INSERT into spread_bets VALUES (\'{}\',\'{}\',\'{}\',\'{}\',{},{},{},\'{}\',0)'.format(id,sportkey,team,book,amt,sp_row[4],sp_row[5],username))
-            return redirect(url_for('bets.getBets'))
+            return redirect(url_for('bets.getUnsettledBets'))
         else:
             return redirect('bets.get_ml',sport=rows[0][1])

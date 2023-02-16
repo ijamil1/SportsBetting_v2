@@ -227,12 +227,12 @@ def uploadScores():
                         at = cur_team
                         at_score = float(cur_score)
                 if game['id'] in spread_ids:
-                    g.cursor.execute('select * from spread_bets where id = \'{}\' and username = \'{}\' and settled = 0'.format(game['id']),username)
+                    g.cursor.execute('select * from spread_bets where id = \'{}\' and username = \'{}\' and settled = 0'.format(game['id'],username))
                     rows = g.cursor.fetchall()
                     processSpreadBetResults(rows, ht, ht_score, at, at_score)
                     settleBets(rows,'sp')
                 if game['id'] in ml_ids:
-                    g.cursor.execute('select * from ml_bets where id = \'{}\' and username = \'{}\' and settled = 0'.format(game['id']),username)
+                    g.cursor.execute('select * from ml_bets where id = \'{}\' and username = \'{}\' and settled = 0'.format(game['id'],username))
                     rows = g.cursor.fetchall()
                     processMLBetResults(rows,ht,ht_score,at,at_score)
                     settleBets(rows, 'ml')
@@ -304,11 +304,11 @@ def processSpreadBetResults(ls, ht, hts, at, ats):
                     updateBalance(book,payout)
 
 def updateBalance(book, amount):
-    g.cursor('select amount from balance where book = \'{}\' and  username = \'{}\''.format(book, session.get('user_id')))
+    g.cursor.execute('select amount from balance where book = \'{}\' and  username = \'{}\''.format(book, session.get('user_id')))
     row = g.cursor.fetchall()
     cur_amt = float(row[0][0])
     new_amt = cur_amt + amount
-    g.cursor('update balance set amount = {} where book = \'{}\' and username = \'{}\''.format(new_amt,book,session.get('user_id')))
+    g.cursor.execute('update balance set amount = {} where book = \'{}\' and username = \'{}\''.format(new_amt,book,session.get('user_id')))
 
 def reformatSpreadsQueryResult(rows):
     spread_dict = {}
@@ -350,9 +350,8 @@ def reformatMLQueryResult(rows):
             ml_dict[id] = l
     return ml_dict
 
-def reformatBets(settled_ml, settled_sp, nonsettled_ml,nonsettled_sp):
+def reformatSettledBets(settled_ml, settled_sp):
     settled = {}
-    nonsettled = {}
     #settled
         #game id
             #ml
@@ -368,9 +367,12 @@ def reformatBets(settled_ml, settled_sp, nonsettled_ml,nonsettled_sp):
         book = row[3]
         line = row[5]
         amt = row[4]
-        if id in settled:
-            #processed a bet on this game before
+        if id in settled and 'ml' in settled[id]:
+            #processed a  ml bet on this game before
             settled[id]['ml'].append({'bet_on': bet_on, 'book': book, 'line': line, 'amt':amt})
+        elif id in settled:
+            #first ml bet on this game but have bet spread
+            settled[id]['ml']=  [{'bet_on': bet_on, 'book': book, 'line': line, 'amt':amt}]
         else:
             #have not processed a bet on this game before
             settled[id] =  {}
@@ -384,12 +386,41 @@ def reformatBets(settled_ml, settled_sp, nonsettled_ml,nonsettled_sp):
         amt = row[4]
         spread = row[5]
         line = row[6]
-        if id in settled:
+        if id in settled and 'sp' in settled[id]:
             settled[id]['sp'].append({'bet_on': bet_on, 'book': book, 'spread': spread, 'line': line, 'amt':amt})
+        elif id in settled:
+            settled[id]['sp'] = [{'bet_on': bet_on, 'book': book, 'spread': spread, 'line': line, 'amt':amt}]
         else:
             settled[id] = {}
             settled[id]['sp'] = [{'bet_on': bet_on, 'book': book, 'spread': spread, 'line': line, 'amt':amt}]
 
+    
+    
+    for id in settled.keys():
+        #scores (id VARCHAR(100), Home_Team VARCHAR(100), Home_Team_Score FLOAT(7,2), Away_Team VARCHAR(100), Away_Team_Score  FLOAT(7,2),  PRIMARY KEY (id))')
+        g.cursor.execute('select * from scores where id = \'{}\''.format(id))
+        rows = g.cursor.fetchall()
+        row = rows[0]
+        ht = row[1]
+        hts = row[2]
+        at = row[3]
+        ats = row[4]
+        settled[id]['score'] = {'ht':ht,'hts':hts,'at':at,'ats':ats}
+    
+    return settled
+
+def reformatUnsettledBets(nonsettled_ml,nonsettled_sp):
+    nonsettled = {}
+    #settled
+        #game id
+            #ml
+                #list of dicts
+            #sp
+                #list of dicts
+            #score
+                #dict
+    
+    
     #nonsettled
         #game id
             #ml
@@ -403,9 +434,11 @@ def reformatBets(settled_ml, settled_sp, nonsettled_ml,nonsettled_sp):
         book = row[3]
         line = row[5]
         amt = row[4]
-        if id in nonsettled:
+        if id in nonsettled and 'ml' in nonsettled[id]:
             #processed a bet on this game before
             nonsettled[id]['ml'].append({'bet_on': bet_on, 'book': book, 'line': line, 'amt':amt})
+        elif id in nonsettled:
+            nonsettled[id]['ml']=  [{'bet_on': bet_on, 'book': book, 'line': line, 'amt':amt}]
         else:
             #have not processed a bet on this game before
             nonsettled[id] =  {}
@@ -418,24 +451,15 @@ def reformatBets(settled_ml, settled_sp, nonsettled_ml,nonsettled_sp):
         amt = row[4]
         spread = row[5]
         line = row[6]
-        if id in nonsettled:
+        if id in nonsettled and 'sp' in nonsettled[id]:
             nonsettled[id]['sp'].append({'bet_on': bet_on, 'book': book, 'spread': spread, 'line': line, 'amt':amt})
+        elif id in nonsettled:
+            nonsettled[id]['sp'] = [{'bet_on': bet_on, 'book': book, 'spread': spread, 'line': line, 'amt':amt}]
         else:
             nonsettled[id] = {}
             nonsettled[id]['sp'] = [{'bet_on': bet_on, 'book': book, 'spread': spread, 'line': line, 'amt':amt}]
     
-    for id in settled.keys():
-        #scores (id VARCHAR(100), Home_Team VARCHAR(100), Home_Team_Score FLOAT(7,2), Away_Team VARCHAR(100), Away_Team_Score  FLOAT(7,2),  PRIMARY KEY (id))')
-        g.cursor.execute('select * from scores where id = \'{}\''.format(id))
-        rows = g.cursor.fetchall()
-        row = rows[0]
-        ht = row[1]
-        hts = row[2]
-        at = row[3]
-        ats = row[4]
-        settled[id]['score'] = {'ht':ht,'hts':hts,'at':at,'ats':ats}
     
-    data = {'settled': settled, 'nonsettled': nonsettled}
-    return data
+    return nonsettled
 
 
