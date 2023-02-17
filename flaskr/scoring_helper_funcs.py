@@ -69,6 +69,42 @@ def uploadScores():
                     settleBets(rows, 'ml')
                 if game['id'] not in score_ids:
                     g.cursor.execute('INSERT INTO scores VALUES (\'{}\',\'{}\',{},\'{}\',{})'.format(game['id'],ht,ht_score,at,at_score))
+        score_ids = getIdsScoresTbl()
+        g.cursor.execute('select * from spread_bets where username = \'{}\' and settled = 0'.format(username))
+        rows = g.cursor.fetchall()
+        new_sp_dict = {}
+        for row in rows:
+            if row[0] in score_ids:
+                if row[0] in new_sp_dict:
+                    new_sp_dict[row[0]].append(row)
+                else:
+                    new_sp_dict[row[0]]=[row]
+        g.cursor.execute('select * from spread_bets where username = \'{}\' and settled = 0'.format(username))
+        rows = g.cursor.fetchall()
+        new_ml_dict = {}
+        for row in rows:
+            if row[0] in score_ids:
+                if row[0] in new_ml_dict:
+                    new_ml_dict[row[0]].append(row)
+                else:
+                    new_ml_dict[row[0]]=[row]
+        query_score_ids = list(new_ml_dict.keys())+list(new_sp_dict.keys())
+        l = ''
+        for id in query_score_ids:
+            l+='\''+id+'\','
+        l = l[:-1]
+        print(l)
+        g.cursor.execute('select id, Home_Team, Home_Team_Score, Away_Team, Away_Team_Score from scores where id in ({})'.format(l))
+        score_rows = g.cursor.fetchall()
+        for r in score_rows:
+            if r[0] in new_ml_dict.keys():
+                processMLBetResults(new_ml_dict[r[0]],row[1],float(row[2]),row[3],float(row[4]))
+            if r[0] in new_sp_dict.keys():
+                processSpreadBetResults(new_sp_dict[r[0]],row[1],float(row[2]),row[3],float(row[4]))
+            
+        
+
+
 
 def settleBets(data, type_of_bet):
     if type_of_bet == 'ml':

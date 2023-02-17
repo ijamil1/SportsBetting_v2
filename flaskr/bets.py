@@ -10,7 +10,7 @@ from flaskr.html_helper_funcs import *
 from flaskr.miscellaneous_funcs import *
 from flaskr.scoring_helper_funcs import *
 import datetime
-
+import sys
 
 bp = Blueprint('bets', __name__)
 
@@ -257,3 +257,61 @@ def makeBet_sp(id=None):
             return redirect(url_for('bets.getUnsettledBets'))
         else:
             return redirect('bets.get_ml',sport=rows[0][1])
+
+@bp.route('/scores',methods = ('GET','POST'))
+@login_required
+def inputScores():
+    get_db()
+    username = session.get('user_id')
+    if request.method == 'GET':
+        existing_score_ids = getIdsScoresTbl()
+        g.cursor.execute('select id from ml_bets where username = \'{}\' and settled=0'.format(username))
+        rows = g.cursor.fetchall()
+        ml_bet_ids = []
+        for row in rows:
+            if row[0] not in existing_score_ids and row[0] not in ml_bet_ids:
+                ml_bet_ids.append(row[0])
+
+        ml_bet_str = ''
+        for id in ml_bet_ids:
+            ml_bet_str+='\''+id+'\','
+        ml_bet_str = ml_bet_str[:-1]
+
+        g.cursor.execute('select id from spread_bets where username = \'{}\' and settled=0'.format(username))
+        rows = g.cursor.fetchall()
+        sp_bet_ids = []
+        for row in rows:
+            if row[0] not in existing_score_ids and row[0] not in sp_bet_ids:
+                sp_bet_ids.append(row[0])
+
+        sp_bet_str = ''
+        for id in sp_bet_ids:
+            sp_bet_str+='\''+id+'\','
+        sp_bet_str = sp_bet_str[:-1]
+        print(ml_bet_str,flush=True)
+        g.cursor.execute('select id, Home_Team, Away_Team from moneyline where id in ({})'.format(ml_bet_str))
+        ml_rows = g.cursor.fetchall()
+        g.cursor.execute('select id, Home_Team, Away_Team from spreads where id in ({})'.format(sp_bet_str))
+        sp_rows = g.cursor.fetchall()
+        d = ml_rows + sp_rows
+        return render_template('bets/input_scores.html',data=d)
+    else:
+        #post
+        id = request.form.get('gameid')
+        hts = float(request.form.get('ht'))
+        ats = float(request.form.get('at'))
+        g.cursor.execute('select Home_Team, Away_Team from moneyline where id = \'{}\' LIMIT 1'.format(id))
+        rows = g.cursor.fetchall()
+        if rows is not None and len(rows) > 0:
+            row = rows[0]
+            ht = row[0]
+            at = row[1]
+        else:
+            g.cursor.execute('select Home_Team, Away_Team from spreads where id = \'{}\' LIMIT 1'.format(id))
+            ht = row[0]
+            at = row[0]
+        
+        g.cursor.execute('insert into scores values (\'{}\',\'{}\',{},\'{}\',{})'.format(id,ht,hts,at,ats))
+        return redirect(url_for('bets.index'))
+
+        
