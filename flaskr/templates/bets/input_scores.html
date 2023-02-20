@@ -18,7 +18,7 @@
         <label for="gameid">Choose game</label>
         <select id="gameid" name="gameid">
             {% for game in data %}
-                <option value="{{game[0]}}">{{game[0]: game[1] vs game[2]}}</option>
+                <option value="{{game[0]}}">{{game[0]}}: {{game[1]}} vs {{game[2]}}</option>
             {% endfor %}
         </select>
         <label for="ht">Enter home team score</label>

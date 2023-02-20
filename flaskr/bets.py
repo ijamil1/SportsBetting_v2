@@ -15,26 +15,17 @@ import sys
 bp = Blueprint('bets', __name__)
 
 
-@bp.route('/home', methods = ('GET', 'POST'))
+@bp.route('/home')
 @login_required
 def index():
-    if request.method == 'GET':
-        get_db()
-        #this block deletes games from spreads and moneyline table which have already occurred
-        deleteSpreads()  
-        deleteML()
-        #
-        uploadScores()
-        return render_template('home.html')
-    elif request.method == 'POST':
-        if request.form.get('button') == 'Spreads':
-            return redirect(url_for('bets.get_spreads'))
-        elif request.form.get('button') == 'Moneylines':
-            return redirect(url_for('bets.get_ml'))
-        else:
-            return redirect(url_for('bets.index'))
-    else:
-        return redirect(url_for('bets.index'))
+    get_db()
+    #this block deletes games from spreads and moneyline table which have already occurred
+    deleteSpreads()  
+    deleteML()
+    #
+    uploadScores()
+    return render_template('home.html')
+   
 
 @bp.route('/get_spreads', methods=('GET', 'POST'))
 @bp.route('/get_spreads/<sport>', methods=('GET', 'POST'))
@@ -272,10 +263,11 @@ def inputScores():
             if row[0] not in existing_score_ids and row[0] not in ml_bet_ids:
                 ml_bet_ids.append(row[0])
 
-        ml_bet_str = ''
+        
+        ml_bet_str = 'where '
         for id in ml_bet_ids:
-            ml_bet_str+='\''+id+'\','
-        ml_bet_str = ml_bet_str[:-1]
+            ml_bet_str+='id = \'{}\' or '.format(id)
+        ml_bet_str = ml_bet_str[:-4]
 
         g.cursor.execute('select id from spread_bets where username = \'{}\' and settled=0'.format(username))
         rows = g.cursor.fetchall()
@@ -284,17 +276,25 @@ def inputScores():
             if row[0] not in existing_score_ids and row[0] not in sp_bet_ids:
                 sp_bet_ids.append(row[0])
 
-        sp_bet_str = ''
+        sp_bet_str = 'where '
         for id in sp_bet_ids:
-            sp_bet_str+='\''+id+'\','
-        sp_bet_str = sp_bet_str[:-1]
-        print(ml_bet_str,flush=True)
-        g.cursor.execute('select id, Home_Team, Away_Team from moneyline where id in ({})'.format(ml_bet_str))
-        ml_rows = g.cursor.fetchall()
-        g.cursor.execute('select id, Home_Team, Away_Team from spreads where id in ({})'.format(sp_bet_str))
-        sp_rows = g.cursor.fetchall()
-        d = ml_rows + sp_rows
-        return render_template('bets/input_scores.html',data=d)
+            sp_bet_str+='id = \'{}\' or '.format(id)
+        sp_bet_str = sp_bet_str[:-4]
+        d = []
+        if len(ml_bet_ids)!=0:
+            g.cursor.execute('select distinct id, Home_Team, Away_Team from moneyline ' + ml_bet_str)
+            ml_rows = g.cursor.fetchall()
+            d += ml_rows
+        if len(sp_bet_ids)!=0:
+            g.cursor.execute('select distinct id, Home_Team, Away_Team from spreads ' + sp_bet_str)
+            sp_rows = g.cursor.fetchall()
+            d += sp_rows
+        
+        if len(d)>0:
+            return render_template('bets/input_scores.html',data=d)
+        else:
+            return render_template('bets/input_noscores.html')
+        
     else:
         #post
         id = request.form.get('gameid')
