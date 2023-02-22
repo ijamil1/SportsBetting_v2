@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}Moneylines{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+  {% for line in data %}
+    <article class="lines">
+      <header>
+        <div>
+          <h1>{{ line[2] }} ({{line[3]}}) vs {{ line[4] }} ({{line[5]}}) at {{line[7]}}</h1>
+          <div class="bookie">lines: {{line[6]}}</div>
+        </div>
+      </header>
+    </article>
+    {% if not loop.last %}
+      <hr>
+    {% endif %}
+  {% endfor %}
+{% endblock %}
+
+

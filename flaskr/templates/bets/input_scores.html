@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}Input Scores{% endblock %}</h1>
+{% endblock %}
+
+{% block content %} 
+    <article class="lines">
+    <ul>
+        {% for game in data%}
+        <li>
+            {{game[0]}}: {{game[1]}} vs {{game[2]}}
+        </li>
+        <br>
+        {% endfor %}
+    </ul>
+    <form method="post">
+        <label for="gameid">Choose game</label>
+        <select id="gameid" name="gameid">
+            {% for game in data %}
+                <option value="{{game[0]}}">{{game[0]}}: {{game[1]}} vs {{game[2]}}</option>
+            {% endfor %}
+        </select>
+        <label for="ht">Enter home team score</label>
+        <input type="text" id="ht" name="ht">
+        <label for=at">Enter away team score</label>
+        <input type="text" id="at" name="at">
+        <input type="submit" value="Submit">
+    </form>
+    </article>
+{% endblock %}

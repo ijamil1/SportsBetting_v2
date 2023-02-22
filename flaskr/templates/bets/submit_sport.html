@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block header %}
+  <h1>{% block title %}See Lines{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+<label for="sports">Choose an in-season sport for which to get odds for:</label>
+<form method="post">
+  <select name="sportkeys" id="sports">
+    {% for key in data %}
+    <option value="{{key}}">{{key}}</option>
+    {% endfor %}
+  </select>
+  <input type="submit" value="Submit">
+</form>
+
+{% endblock %}
