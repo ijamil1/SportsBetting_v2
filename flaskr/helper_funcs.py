@@ -1,4 +1,4 @@
-#placeholder comment
+
 import requests
 import pymysql
 from flaskr.create_tbls import *
